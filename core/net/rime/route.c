@@ -114,7 +114,7 @@ route_init(void)
   list_init(route_table);
   memb_init(&route_mem);
 
-  ctimer_set(&t, CLOCK_SECOND, periodic, NULL);
+  //ctimer_set(&t, CLOCK_SECOND, periodic, NULL);
 }
 /*---------------------------------------------------------------------------*/
 int

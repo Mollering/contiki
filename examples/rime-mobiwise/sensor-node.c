@@ -40,6 +40,7 @@
 #include "contiki.h"
 #include "net/rime/rime.h"
 #include "net/rime/mesh.h"
+#include "net/rime/route-discovery.h"
 
 #include "dev/button-sensor.h"
 
@@ -91,20 +92,21 @@ PROCESS_THREAD(sensor_node_process, ev, data)
   linkaddr_t sink_node_addr, this_node_addr = linkaddr_node_addr;
   sink_node_addr.u8[0] = 1;
   sink_node_addr.u8[1] = 0;
-
-
   PROCESS_EXITHANDLER(mesh_close(&mesh);)
+
+
   PROCESS_BEGIN();
   PRINTF("[Sensor Node %d] Process begin.\n", this_node_addr.u8[0]);
 
-  /* Wait six seconds before starting */
-  etimer_set(&et, 6*CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
+  SENSORS_ACTIVATE(button_sensor);
   mesh_open(&mesh, 132, &callbacks);
   PRINTF("[Sensor Node %d] Opened Mesh Connection.\n", this_node_addr.u8[0]);
 
-  SENSORS_ACTIVATE(button_sensor);
+  /* Wait 5 seconds before starting */
+  PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
+  printf("[Sensor Node %d] Route Discovery Started.\n", this_node_addr.u8[0]);
+  route_discovery_discover(&(mesh.route_discovery_conn),
+          &sink_node_addr, CLOCK_SECOND * 10);
 
   while(1) {
     
