@@ -119,7 +119,7 @@ ipolite_open(struct ipolite_conn *c, uint16_t channel, uint8_t dups,
   broadcast_open(&c->c, channel, &broadcast);
   c->cb = cb;
   c->maxdups = dups;
-  PRINTF("ipolite open channel %d\n", channel);
+  //PRINTF("ipolite open channel %d\n", channel);
 }
 /*---------------------------------------------------------------------------*/
 void

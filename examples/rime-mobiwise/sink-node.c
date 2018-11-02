@@ -78,7 +78,7 @@ PROCESS_THREAD(sink_node_process, ev, data)
 
   etimer_set(&periodic, CLOCK_SECOND/10UL);
 
-  // Wait two seconds before starting
+  /* Wait two seconds before starting */
   etimer_set(&et, 2*CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 

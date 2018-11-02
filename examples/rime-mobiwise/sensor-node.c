@@ -97,7 +97,7 @@ PROCESS_THREAD(sensor_node_process, ev, data)
   PROCESS_BEGIN();
   PRINTF("[Sensor Node %d] Process begin.\n", this_node_addr.u8[0]);
 
-  // Wait six seconds before starting
+  /* Wait six seconds before starting */
   etimer_set(&et, 6*CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
@@ -109,9 +109,8 @@ PROCESS_THREAD(sensor_node_process, ev, data)
   while(1) {
     
 
-    /* Wait for button click before sending the first message. */
+    /* Wait for button click before sending a message. */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-
     printf("[Sensor Node %d] Button clicked!\n", this_node_addr.u8[0]);
 
     /* Send a message to the sink node. */
