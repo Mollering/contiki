@@ -41,6 +41,7 @@
 #include "net/rime/rime.h"
 #include "net/rime/mesh.h"
 #include "net/rime/route-discovery.h"
+#include "dev/serial-line.h"
 
 #include "dev/button-sensor.h"
 
@@ -51,15 +52,17 @@
 
 #define DEBUG 1
 #if DEBUG
-#define PRINTF(...) printf(__VA_ARGS__);
+#define DBG(...) printf(__VA_ARGS__);
 #else
-#define PRINTF(...)
+#define DBG(...)
 #endif
 
 static struct mesh_conn mesh;
+
 /*---------------------------------------------------------------------------*/
 PROCESS(sensor_node_process, "Sensor Node Process");
-AUTOSTART_PROCESSES(&sensor_node_process);
+PROCESS(serial_input, "Serial Commands Process");
+AUTOSTART_PROCESSES(&sensor_node_process, &serial_input);
 /*---------------------------------------------------------------------------*/
 static void
 sent(struct mesh_conn *c)
@@ -84,11 +87,27 @@ recv(struct mesh_conn *c, const linkaddr_t *from, uint8_t hops)
   //mesh_send(&mesh, from);
 }
 
+static void
+route_print_table(void)
+{
+  struct route_entry *e;
+  int i;
+
+  printf("Showing all route entries.\n");
+  for(i = 0; e != NULL; ++i) {
+    e = route_get(i);
+    printf("Route to %d.%d with nexthop %d.%d and cost %d.\n",
+      e->dest.u8[0], e->dest.u8[1],
+      e->nexthop.u8[0], e->nexthop.u8[1],
+      e->cost);
+  }
+}
+
 const static struct mesh_callbacks callbacks = {recv, sent, timedout};
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(sensor_node_process, ev, data)
 {
-  static struct etimer et;
+  //static struct etimer et;
   linkaddr_t sink_node_addr, this_node_addr = linkaddr_node_addr;
   sink_node_addr.u8[0] = 1;
   sink_node_addr.u8[1] = 0;
@@ -96,15 +115,15 @@ PROCESS_THREAD(sensor_node_process, ev, data)
 
 
   PROCESS_BEGIN();
-  PRINTF("[Sensor Node %d] Process begin.\n", this_node_addr.u8[0]);
+  DBG("[Sensor Node %d] Process begin.\n", this_node_addr.u8[0]);
 
   SENSORS_ACTIVATE(button_sensor);
   mesh_open(&mesh, 132, &callbacks);
-  PRINTF("[Sensor Node %d] Opened Mesh Connection.\n", this_node_addr.u8[0]);
+  DBG("[Sensor Node %d] Opened Mesh Connection.\n", this_node_addr.u8[0]);
 
-  /* Wait 5 seconds before starting */
+  /* Wait for button click seconds before starting */
   PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-  printf("[Sensor Node %d] Route Discovery Started.\n", this_node_addr.u8[0]);
+  DBG("[Sensor Node %d] Route Discovery Started.\n", this_node_addr.u8[0]);
   route_discovery_discover(&(mesh.route_discovery_conn),
           &sink_node_addr, CLOCK_SECOND * 10);
 
@@ -113,7 +132,7 @@ PROCESS_THREAD(sensor_node_process, ev, data)
 
     /* Wait for button click before sending a message. */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-    printf("[Sensor Node %d] Button clicked!\n", this_node_addr.u8[0]);
+    DBG("[Sensor Node %d] Button clicked!\n", this_node_addr.u8[0]);
 
     /* Send a message to the sink node. */
     packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
@@ -121,5 +140,21 @@ PROCESS_THREAD(sensor_node_process, ev, data)
 
   }
   PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(serial_input, ev, data)
+{
+ PROCESS_BEGIN();
+
+ for(;;) {
+   PROCESS_YIELD();
+   if(ev == serial_line_event_message) {
+     DBG("Received Serial Input: %s\n", (char *)data);
+     if (!strcmp((char *)data, "route")) {
+      route_print_table();
+     }
+   }
+ }
+ PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

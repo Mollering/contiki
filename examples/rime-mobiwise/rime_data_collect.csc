@@ -103,11 +103,33 @@
       </interface_config>
       <motetype_identifier>sky2</motetype_identifier>
     </mote>
+    <mote>
+      <breakpoints />
+      <interface_config>
+        org.contikios.cooja.interfaces.Position
+        <x>54.370816805473815</x>
+        <y>49.27175366534469</y>
+        <z>0.0</z>
+      </interface_config>
+      <interface_config>
+        org.contikios.cooja.mspmote.interfaces.MspClock
+        <deviation>1.0</deviation>
+      </interface_config>
+      <interface_config>
+        org.contikios.cooja.mspmote.interfaces.MspMoteID
+        <id>3</id>
+      </interface_config>
+      <interface_config>
+        org.contikios.cooja.mspmote.interfaces.MspSerial
+        <history>a~;help~;contiki~;help~;</history>
+      </interface_config>
+      <motetype_identifier>sky2</motetype_identifier>
+    </mote>
   </simulation>
   <plugin>
     org.contikios.cooja.plugins.SimControl
     <width>260</width>
-    <z>1</z>
+    <z>0</z>
     <height>160</height>
     <location_x>400</location_x>
     <location_y>0</location_y>
@@ -121,10 +143,10 @@
       <skin>org.contikios.cooja.plugins.skins.TrafficVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.UDGMVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.MoteTypeVisualizerSkin</skin>
-      <viewport>6.297492229906063 0.0 0.0 6.297492229906063 -218.61208977938568 -1.5368194198279712</viewport>
+      <viewport>3.3775267630410317 0.0 0.0 3.3775267630410317 -52.391414141414145 67.97915995259115</viewport>
     </plugin_config>
     <width>400</width>
-    <z>2</z>
+    <z>3</z>
     <height>400</height>
     <location_x>1</location_x>
     <location_y>1</location_y>
@@ -137,7 +159,7 @@
       <coloring />
     </plugin_config>
     <width>1011</width>
-    <z>0</z>
+    <z>2</z>
     <height>739</height>
     <location_x>2</location_x>
     <location_y>400</location_y>
@@ -145,7 +167,7 @@
   <plugin>
     PowerTracker
     <width>350</width>
-    <z>4</z>
+    <z>5</z>
     <height>400</height>
     <location_x>660</location_x>
     <location_y>1</location_y>
@@ -159,10 +181,23 @@
       <hidenodests>false</hidenodests>
     </plugin_config>
     <width>1009</width>
-    <z>3</z>
+    <z>4</z>
     <height>589</height>
     <location_x>3</location_x>
     <location_y>1142</location_y>
+  </plugin>
+  <plugin>
+    org.contikios.cooja.plugins.MoteInterfaceViewer
+    <mote_arg>2</mote_arg>
+    <plugin_config>
+      <interface>Serial port</interface>
+      <scrollpos>0,0</scrollpos>
+    </plugin_config>
+    <width>350</width>
+    <z>1</z>
+    <height>300</height>
+    <location_x>402</location_x>
+    <location_y>135</location_y>
   </plugin>
 </simconf>
 
