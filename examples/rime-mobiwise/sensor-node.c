@@ -43,8 +43,6 @@
 #include "net/rime/route-discovery.h"
 #include "dev/serial-line.h"
 
-#include "dev/button-sensor.h"
-
 #include <stdio.h>
 #include <string.h>
 
@@ -58,6 +56,9 @@
 #endif
 
 static struct mesh_conn mesh;
+static linkaddr_t sink_node_addr;
+static linkaddr_t this_node_addr;
+
 
 /*---------------------------------------------------------------------------*/
 PROCESS(sensor_node_process, "Sensor Node Process");
@@ -90,16 +91,41 @@ recv(struct mesh_conn *c, const linkaddr_t *from, uint8_t hops)
 static void
 route_print_table(void)
 {
-  struct route_entry *e;
-  int i;
+  struct route_entry *e = NULL;
+  int i = 0;
 
-  printf("Showing all route entries.\n");
-  for(i = 0; e != NULL; ++i) {
+  printf("Showing all entries from routing table.\n");
+  do {
     e = route_get(i);
+    if (e == NULL) {
+      break;
+    }
     printf("Route to %d.%d with nexthop %d.%d and cost %d.\n",
       e->dest.u8[0], e->dest.u8[1],
       e->nexthop.u8[0], e->nexthop.u8[1],
       e->cost);
+    ++i;
+  } while (1);
+}
+
+static void
+route_start_discovery(void)
+{
+  printf("Route Discovery Started.\n");
+  route_discovery_discover(&(mesh.route_discovery_conn),
+        &sink_node_addr, CLOCK_SECOND * 10);
+}
+
+static void
+send_msg_to_sink(void)
+{
+  printf("Message to Sink Started.\n");
+  /* Send a message to the sink node. */
+  packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
+  if (mesh_send(&mesh, &sink_node_addr)) {
+    printf("Message to Sink queued to send.\n");
+  } else {
+    printf("Message to Sink NOT queued to send.\n");
   }
 }
 
@@ -107,8 +133,7 @@ const static struct mesh_callbacks callbacks = {recv, sent, timedout};
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(sensor_node_process, ev, data)
 {
-  //static struct etimer et;
-  linkaddr_t sink_node_addr, this_node_addr = linkaddr_node_addr;
+  this_node_addr = linkaddr_node_addr;
   sink_node_addr.u8[0] = 1;
   sink_node_addr.u8[1] = 0;
   PROCESS_EXITHANDLER(mesh_close(&mesh);)
@@ -117,27 +142,11 @@ PROCESS_THREAD(sensor_node_process, ev, data)
   PROCESS_BEGIN();
   DBG("[Sensor Node %d] Process begin.\n", this_node_addr.u8[0]);
 
-  SENSORS_ACTIVATE(button_sensor);
   mesh_open(&mesh, 132, &callbacks);
   DBG("[Sensor Node %d] Opened Mesh Connection.\n", this_node_addr.u8[0]);
 
-  /* Wait for button click seconds before starting */
-  PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-  DBG("[Sensor Node %d] Route Discovery Started.\n", this_node_addr.u8[0]);
-  route_discovery_discover(&(mesh.route_discovery_conn),
-          &sink_node_addr, CLOCK_SECOND * 10);
-
   while(1) {
-    
-
-    /* Wait for button click before sending a message. */
-    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
-    DBG("[Sensor Node %d] Button clicked!\n", this_node_addr.u8[0]);
-
-    /* Send a message to the sink node. */
-    packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
-    mesh_send(&mesh, &sink_node_addr);
-
+    PROCESS_YIELD();
   }
   PROCESS_END();
 }
@@ -150,8 +159,14 @@ PROCESS_THREAD(serial_input, ev, data)
    PROCESS_YIELD();
    if(ev == serial_line_event_message) {
      DBG("Received Serial Input: %s\n", (char *)data);
-     if (!strcmp((char *)data, "route")) {
+     if (!strcmp((char *)data, "routes")) {
       route_print_table();
+     } else if (!strcmp((char *)data, "discover")) {
+      route_start_discovery();
+     } else if (!strcmp((char *)data, "send")) {
+      send_msg_to_sink();
+     } else {
+      printf("Unknown command.\n");
      }
    }
  }

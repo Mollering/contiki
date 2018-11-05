@@ -46,7 +46,7 @@
 
 #define DEBUG 1
 #if DEBUG
-#define DBG(...) DBG(__VA_ARGS__);
+#define DBG(...) printf(__VA_ARGS__);
 #else
 #define DBG(...)
 #endif
@@ -60,7 +60,7 @@ AUTOSTART_PROCESSES(&sink_node_process);
 static void
 recv(struct mesh_conn *c, const linkaddr_t *from, uint8_t hops)
 {
-  DBG("[Sink Node] Data received from %d.%d (%d hops): %.*s (%d)\n",
+  printf("[Sink Node] Data received from %d.%d (%d hops): %.*s (%d)\n",
 	 from->u8[0], from->u8[1], hops,
 	 packetbuf_datalen(), (char *)packetbuf_dataptr(), packetbuf_datalen());
 
@@ -71,24 +71,20 @@ const static struct mesh_callbacks callbacks = {recv};
 PROCESS_THREAD(sink_node_process, ev, data)
 {
   PROCESS_EXITHANDLER(mesh_close(&mesh);)
-  static struct etimer periodic, et;
+  static struct etimer et;
+
 
   PROCESS_BEGIN();
   DBG("[Sink Node] Process begin.\n");
 
-  etimer_set(&periodic, CLOCK_SECOND/10UL);
-
   /* Wait two seconds before starting */
   etimer_set(&et, 2*CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
   mesh_open(&mesh, 132, &callbacks);
   DBG("[Sink Node] Opened Mesh Connection.\n");
 
-
   while(1) {
-	  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic));
-	  etimer_reset(&periodic);
+	  PROCESS_YIELD();
   }
 
   DBG("[Sink Node] Process End.\n");
