@@ -37,11 +37,10 @@
  *         Joel Mollering
  */
 
-#include "contiki.h"
-#include "net/rime/rime.h"
-#include "net/rime/mesh.h"
-#include "net/rime/route-discovery.h"
-#include "dev/serial-line.h"
+#include "contiki.h"                   /* Contiki OS */
+#include "net/rime/rime.h"             /* Rime Network Stack Protocol */
+#include "dev/serial-line.h"           /* For Serial Input Commands */
+#include "dev/sht11/sht11-sensor.h"    /* SHT11 Temperature and Humidity Sensor */
 
 #include <stdio.h>
 #include <string.h>
@@ -129,6 +128,27 @@ send_msg_to_sink(void)
   }
 }
 
+static void
+sensor_start_sensing(void)
+{
+  int val, dec;
+  float frac, s = 0.0;
+
+  printf("Sensor started sensing.\n");
+  SENSORS_ACTIVATE(sht11_sensor);
+  val = sht11_sensor.value(SHT11_SENSOR_TEMP);
+  if (val != -1) {
+    s = ((0.01*val) - 39.60);
+    dec = s;
+    frac = s - dec;
+    printf("Temp: %d.%02uº (%d)\n", dec, (unsigned int)(frac*100), val);
+  } else {
+    printf("Error reading temperature.\n");
+  }
+  
+  SENSORS_DEACTIVATE(sht11_sensor);
+}
+
 const static struct mesh_callbacks callbacks = {recv, sent, timedout};
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(sensor_node_process, ev, data)
@@ -165,6 +185,8 @@ PROCESS_THREAD(serial_input, ev, data)
       route_start_discovery();
      } else if (!strcmp((char *)data, "send")) {
       send_msg_to_sink();
+     } else if (!strcmp((char *)data, "sense")) {
+      sensor_start_sensing();
      } else {
       printf("Unknown command.\n");
      }

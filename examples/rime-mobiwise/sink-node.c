@@ -37,9 +37,8 @@
  *         Joel Mollering
  */
 
-#include "contiki.h"
-#include "net/rime/rime.h"
-#include "net/rime/mesh.h"
+#include "contiki.h"            /* Contiki OS */
+#include "net/rime/rime.h"      /* Rime Network Stack Protocol */
 
 #include <stdio.h>
 #include <string.h>
