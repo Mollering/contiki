@@ -41,11 +41,13 @@
 #include "net/rime/rime.h"             /* Rime Network Stack Protocol */
 #include "dev/serial-line.h"           /* For Serial Input Commands */
 #include "dev/sht11/sht11-sensor.h"    /* SHT11 Temperature and Humidity Sensor */
+#include "net/rime/packetqueue.h"      /* Packet Queue Management */
 
 #include <stdio.h>
 #include <string.h>
 
-#define MESSAGE "Hello!"
+#define MESSAGE           "Hello!"
+#define MAX_PACKET_QUEUE  10
 
 #define DEBUG 1
 #if DEBUG
@@ -57,6 +59,9 @@
 static struct mesh_conn mesh;
 static linkaddr_t sink_node_addr;
 static linkaddr_t this_node_addr;
+
+/* Define a packet queue for sending */
+PACKETQUEUE(sensor_packet_queue, MAX_PACKET_QUEUE);
 
 
 /*---------------------------------------------------------------------------*/
@@ -120,16 +125,36 @@ send_msg_to_sink(void)
 {
   printf("Message to Sink Started.\n");
   /* Send a message to the sink node. */
-  packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
+
+  // /* packetbuf before */
+  // printf("packetbuf before\n");
+  // printf("dataptr: %p\n", packetbuf_dataptr());
+  // printf("hdrptr: %p\n", packetbuf_hdrptr());
+  // printf("datalen: %u\n", packetbuf_datalen());
+  // printf("hdrlen: %u\n", packetbuf_hdrlen());
+  // printf("totlen: %u\n", packetbuf_totlen());
+  // printf("remlen: %u\n", packetbuf_remaininglen());
+
+  // packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
+
+  // /* packetbuf after */
+  // printf("packetbuf after\n");
+  // printf("dataptr: %p\n", packetbuf_dataptr());
+  // printf("hdrptr: %p\n", packetbuf_hdrptr());
+  // printf("datalen: %u\n", packetbuf_datalen());
+  // printf("hdrlen: %u\n", packetbuf_hdrlen());
+  // printf("totlen: %u\n", packetbuf_totlen());
+  // printf("remlen: %u\n", packetbuf_remaininglen());
+
   if (mesh_send(&mesh, &sink_node_addr)) {
-    printf("Message to Sink queued to send.\n");
+    printf("Message to Sink sent.\n");
   } else {
-    printf("Message to Sink NOT queued to send.\n");
+    printf("Message to Sink NOT sent.\n");
   }
 }
 
 static void
-sensor_start_sensing(void)
+sensor_perform_sensing(void)
 {
   int val, dec;
   float frac, s = 0.0;
@@ -141,12 +166,37 @@ sensor_start_sensing(void)
     s = ((0.01*val) - 39.60);
     dec = s;
     frac = s - dec;
-    printf("Temp: %d.%02uº (%d)\n", dec, (unsigned int)(frac*100), val);
+    printf("Temp: %d.%02u C (%d)\n", dec, (unsigned int)(frac*100), val);
+
+    /* Insert the reading into a packet in packetbuf. */
+    packetbuf_clear();
+    packetbuf_set_datalen(sprintf(packetbuf_dataptr(), 
+            "Temp: %d.%02u C", dec, (unsigned int)(frac*100)) + 1);
+
+    if (packetqueue_enqueue_packetbuf(&sensor_packet_queue, 0, &mesh)) {
+      printf("Sensing saved into packet queue.\n");
+    } else {
+      printf("Sensing could not be saved into packet queue.\n");
+    }
   } else {
     printf("Error reading temperature.\n");
   }
   
   SENSORS_DEACTIVATE(sht11_sensor);
+}
+
+static void
+queue_show(void)
+{
+  struct packetqueue_item *item = packetqueue_first(&sensor_packet_queue);
+  int queue_length = packetqueue_len(&sensor_packet_queue);
+  //struct queuebuf *buffer = NULL;
+  int i;
+
+  for (i = 0; i < queue_length; ++i) {
+    //printf("Packet #%d: %s\n", i, item->buf.ram_ptr.data); <<< TODO
+    item = item->next;
+  }
 }
 
 const static struct mesh_callbacks callbacks = {recv, sent, timedout};
@@ -164,6 +214,9 @@ PROCESS_THREAD(sensor_node_process, ev, data)
 
   mesh_open(&mesh, 132, &callbacks);
   DBG("[Sensor Node %d] Opened Mesh Connection.\n", this_node_addr.u8[0]);
+
+  packetqueue_init(&sensor_packet_queue);
+  DBG("[Sensor Node %d] Initialized Packet Queue.\n", this_node_addr.u8[0]);
 
   while(1) {
     PROCESS_YIELD();
@@ -186,7 +239,9 @@ PROCESS_THREAD(serial_input, ev, data)
      } else if (!strcmp((char *)data, "send")) {
       send_msg_to_sink();
      } else if (!strcmp((char *)data, "sense")) {
-      sensor_start_sensing();
+      sensor_perform_sensing();
+     } else if (!strcmp((char *)data, "queue")) {
+      queue_show();
      } else {
       printf("Unknown command.\n");
      }

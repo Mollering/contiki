@@ -1476,8 +1476,6 @@ collect_send(struct collect_conn *tc, int rexmits)
     } else {
       PRINTF("%d.%d: drop originated packet: no queuebuf\n",
              linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
-      PRINTF("%d.%d: drop originated packet: no queuebuf\n",
-             linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
       ret = 0;
     }
 

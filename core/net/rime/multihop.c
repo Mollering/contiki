@@ -127,22 +127,35 @@ multihop_send(struct multihop_conn *c, const linkaddr_t *to)
 {
   linkaddr_t *nexthop;
 
+  /* If there is no registered multihop forward callback, 
+   * then the packet can not be sent.
+   */
   if(c->cb->forward == NULL) {
     return 0;
   }
+
+  /* If it is possible to send, put the packet nice and tidy */
   packetbuf_compact();
   packetbuf_set_addr(PACKETBUF_ADDR_ERECEIVER, to);
   packetbuf_set_addr(PACKETBUF_ADDR_ESENDER, &linkaddr_node_addr);
   packetbuf_set_attr(PACKETBUF_ATTR_HOPS, 1);
+
+  /* Find where to send it by using the address returned by
+   * the multihop forward callback.
+   */
   nexthop = c->cb->forward(c, &linkaddr_node_addr, to, NULL, 0);
   
-  if(nexthop == NULL) {
-    PRINTF("multihop_send: no route\n");
+  if(nexthop == NULL) {                 /* If there is no address to send the packet to, */
+    
+    PRINTF("multihop_send: no route\n");/* then we say that there is nothing to do. */
     return 0;
-  } else {
+
+  } else { /* We have a next hop, so let's proceed with a node-to-node communication. */
+    
     PRINTF("multihop_send: sending data towards %d.%d\n",
 	   nexthop->u8[0], nexthop->u8[1]);
     unicast_send(&c->c, nexthop);
+
     return 1;
   }
 }

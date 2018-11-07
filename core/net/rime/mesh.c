@@ -91,22 +91,30 @@ data_packet_forward(struct multihop_conn *multihop,
   struct mesh_conn *c = (struct mesh_conn *)
     ((char *)multihop - offsetof(struct mesh_conn, multihop));
 
+  /* Look for a route to destination node. */
   rt = route_lookup(dest);
-  if(rt == NULL) {
-    if(c->queued_data != NULL) {
-      queuebuf_free(c->queued_data);
+
+  if(rt == NULL) {  /* There is no available route (yet). */
+
+    if(c->queued_data != NULL) {     /* If there is queued data in the queuebuf, */
+      queuebuf_free(c->queued_data); /* then clean it. */
     }
 
     PRINTF("data_packet_forward: queueing data, sending rreq\n");
+
+    /* Put the data from the packetbuf queued in the queuebuf. */
     c->queued_data = queuebuf_new_from_packetbuf();
     linkaddr_copy(&c->queued_data_dest, dest);
-    route_discovery_discover(&c->route_discovery_conn, dest, PACKET_TIMEOUT);
 
+    /* Try to find a route and return that is not possible to send for now. */
+    route_discovery_discover(&c->route_discovery_conn, dest, PACKET_TIMEOUT);
     return NULL;
-  } else {
+
+  } else { /* There is a route, so let's refresh it. */
     route_refresh(rt);
   }
   
+  /* Return the address of the next hop of the available route. */
   return &rt->nexthop;
 }
 /*---------------------------------------------------------------------------*/
