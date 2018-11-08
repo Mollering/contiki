@@ -188,13 +188,16 @@ sensor_perform_sensing(void)
 static void
 queue_show(void)
 {
-  struct packetqueue_item *item = packetqueue_first(&sensor_packet_queue);
   int queue_length = packetqueue_len(&sensor_packet_queue);
-  //struct queuebuf *buffer = NULL;
-  int i;
+  if (queue_length == 0) {
+    printf("No packets in queue.\n");
+    return;
+  }
 
+  struct packetqueue_item *item = packetqueue_first(&sensor_packet_queue);
+  int i;
   for (i = 0; i < queue_length; ++i) {
-    //printf("Packet #%d: %s\n", i, item->buf.ram_ptr.data); <<< TODO
+    printf("Packet #%d: %s\n", i+1, (char *)queuebuf_dataptr(item->buf));
     item = item->next;
   }
 }
