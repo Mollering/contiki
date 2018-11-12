@@ -53,7 +53,7 @@
 #define CHAMELEON_WITH_MAC_LINK_ADDRESSES 0
 #endif /* !CHAMELEON_CONF_WITH_MAC_LINK_ADDRESSES */
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)

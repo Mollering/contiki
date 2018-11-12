@@ -46,7 +46,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MESSAGE           "Hello!"
 #define MAX_PACKET_QUEUE  10
 
 #define DEBUG 1
@@ -88,8 +87,11 @@ recv(struct mesh_conn *c, const linkaddr_t *from, uint8_t hops)
 	 from->u8[0], from->u8[1],
 	 packetbuf_datalen(), (char *)packetbuf_dataptr(), packetbuf_datalen());
 
-  //packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
-  //mesh_send(&mesh, from);
+  if (packetqueue_enqueue_packetbuf(&sensor_packet_queue, 0, c)) {
+    printf("Received packet saved into packet queue.\n");
+  } else {
+    printf("Received packet could not be saved into packet queue.\n");
+  }
 }
 
 static void
@@ -124,33 +126,39 @@ static void
 send_msg_to_sink(void)
 {
   printf("Message to Sink Started.\n");
-  /* Send a message to the sink node. */
 
-  // /* packetbuf before */
-  // printf("packetbuf before\n");
-  // printf("dataptr: %p\n", packetbuf_dataptr());
-  // printf("hdrptr: %p\n", packetbuf_hdrptr());
-  // printf("datalen: %u\n", packetbuf_datalen());
-  // printf("hdrlen: %u\n", packetbuf_hdrlen());
-  // printf("totlen: %u\n", packetbuf_totlen());
-  // printf("remlen: %u\n", packetbuf_remaininglen());
-
-  // packetbuf_copyfrom(MESSAGE, strlen(MESSAGE));
-
-  // /* packetbuf after */
-  // printf("packetbuf after\n");
-  // printf("dataptr: %p\n", packetbuf_dataptr());
-  // printf("hdrptr: %p\n", packetbuf_hdrptr());
-  // printf("datalen: %u\n", packetbuf_datalen());
-  // printf("hdrlen: %u\n", packetbuf_hdrlen());
-  // printf("totlen: %u\n", packetbuf_totlen());
-  // printf("remlen: %u\n", packetbuf_remaininglen());
-
-  if (mesh_send(&mesh, &sink_node_addr)) {
-    printf("Message to Sink sent.\n");
-  } else {
-    printf("Message to Sink NOT sent.\n");
+  /* Check que queue first. */
+  int queue_length = packetqueue_len(&sensor_packet_queue);
+    if (queue_length == 0) {
+    printf("No packets in queue. There is nothing to send.\n");
+    return;
   }
+
+  /* In case there is something to send. */
+  struct packetqueue_item *item; 
+  struct queuebuf *queue;
+  int i;
+
+  /* Run through the queue. */
+  for (i = 0; i < queue_length; ++i) {
+
+    /* We should send the first packet from the queue. */
+    item = packetqueue_first(&sensor_packet_queue);
+    queue = packetqueue_queuebuf(item);
+
+    /* Place the queued packet into the packetbuf. */
+    queuebuf_to_packetbuf(queue);
+
+    /* Send the packet to the Sink Node. */
+    if (mesh_send(&mesh, &sink_node_addr)) {
+      packetqueue_dequeue(&sensor_packet_queue);
+      printf("Message to Sink sent.\n");
+    } else {
+      printf("Message to Sink NOT sent.\n");
+    }
+  }
+
+
 }
 
 static void
@@ -181,7 +189,6 @@ sensor_perform_sensing(void)
   } else {
     printf("Error reading temperature.\n");
   }
-  
   SENSORS_DEACTIVATE(sht11_sensor);
 }
 
@@ -197,7 +204,7 @@ queue_show(void)
   struct packetqueue_item *item = packetqueue_first(&sensor_packet_queue);
   int i;
   for (i = 0; i < queue_length; ++i) {
-    printf("Packet #%d: %s\n", i+1, (char *)queuebuf_dataptr(item->buf));
+    printf("Packet #%d: %s\n", i+1, (char *)queuebuf_dataptr(packetqueue_queuebuf(item)));
     item = item->next;
   }
 }

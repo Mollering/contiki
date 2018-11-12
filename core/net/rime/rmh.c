@@ -53,7 +53,7 @@ struct data_hdr {
   uint8_t max_rexmits;
 };
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)

@@ -55,7 +55,7 @@ static const struct packetbuf_attrlist attributes[] =
     PACKETBUF_ATTR_LAST
   };
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -68,7 +68,7 @@ void
 data_packet_received(struct unicast_conn *uc, const linkaddr_t *from)
 {
   struct multihop_conn *c = (struct multihop_conn *)uc;
-  linkaddr_t *nexthop;
+  //linkaddr_t *nexthop;
   linkaddr_t sender, receiver;
 
   /* Copy the packet attributes to avoid them being overwritten or
@@ -83,25 +83,29 @@ data_packet_received(struct unicast_conn *uc, const linkaddr_t *from)
 	 packetbuf_addr(PACKETBUF_ADDR_ERECEIVER)->u8[1],
 	 packetbuf_datalen());
 
-  if(linkaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_ERECEIVER),
-				 &linkaddr_node_addr)) {
-    PRINTF("for us!\n");
-    if(c->cb->recv) {
-      c->cb->recv(c, &sender, from,
-		  packetbuf_attr(PACKETBUF_ATTR_HOPS));
+  if(linkaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_ERECEIVER), &linkaddr_node_addr))
+  { /* In case the packet reached the destination. */
+    PRINTF("Packet is for us!\n");
+    if(c->cb->recv)
+    {
+      c->cb->recv(c, &sender, from, packetbuf_attr(PACKETBUF_ATTR_HOPS));
     }
-  } else {
-    nexthop = NULL;
-    if(c->cb->forward) {
-      packetbuf_set_attr(PACKETBUF_ATTR_HOPS,
-			 packetbuf_attr(PACKETBUF_ATTR_HOPS) + 1);
-      nexthop = c->cb->forward(c, &sender, &receiver,
-			       from, packetbuf_attr(PACKETBUF_ATTR_HOPS) - 1);
-    }
-    if(nexthop) {
-      PRINTF("forwarding to %d.%d\n", nexthop->u8[0], nexthop->u8[1]);
-      unicast_send(&c->c, nexthop);
-    }
+  }
+  else /* In case the packet did not reached the destination. */
+  {
+    // nexthop = NULL;
+    // if(c->cb->forward) /* If we have set a mesh forwarding callback, let's call it. */
+    // {
+    //   packetbuf_set_attr(PACKETBUF_ATTR_HOPS, packetbuf_attr(PACKETBUF_ATTR_HOPS) + 1);
+    //   nexthop = c->cb->forward(c, &sender, &receiver, from, packetbuf_attr(PACKETBUF_ATTR_HOPS) - 1);
+    // }
+
+    // if(nexthop) /* We have found the next hop, let's send the packet. */I
+    // {
+    //   PRINTF("forwarding to %d.%d\n", nexthop->u8[0], nexthop->u8[1]);
+    //   unicast_send(&c->c, nexthop);
+    // }
+    c->cb->recv(c, &sender, from, packetbuf_attr(PACKETBUF_ATTR_HOPS));
   }
 }
 /*---------------------------------------------------------------------------*/

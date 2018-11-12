@@ -68,7 +68,7 @@ struct rrep_hdr {
 #endif
 
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -134,7 +134,7 @@ static void
 insert_route(const linkaddr_t *originator, const linkaddr_t *last_hop,
 	     uint8_t hops)
 {
-  PRINTF("%d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
+  printf("%d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
 	 linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
 	 originator->u8[0], originator->u8[1],
 	 last_hop->u8[0], last_hop->u8[1],
