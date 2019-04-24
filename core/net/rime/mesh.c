@@ -47,11 +47,16 @@
 #include "net/rime/route.h"
 #include "net/rime/mesh.h"
 
+
+#if PLATFORM_HAS_LEDS
+#include "dev/leds.h"
+#endif
+
 #include <stddef.h> /* For offsetof */
 
-#define PACKET_TIMEOUT (CLOCK_SECOND * 10)
+#define PACKET_TIMEOUT (CLOCK_SECOND * 5)
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -126,6 +131,10 @@ found_route(struct route_discovery_conn *rdc, const linkaddr_t *dest)
     ((char *)rdc - offsetof(struct mesh_conn, route_discovery_conn));
 
   PRINTF("found_route\n");
+#if PLATFORM_HAS_LEDS
+  /* set green led when we found a valid route */
+  leds_on(LEDS_GREEN);
+#endif
 
   if(c->queued_data != NULL &&
      linkaddr_cmp(dest, &c->queued_data_dest)) {
@@ -141,7 +150,7 @@ found_route(struct route_discovery_conn *rdc, const linkaddr_t *dest)
       }
     } else {
       if(c->cb->timedout != NULL) {
-        c->cb->timedout(c);
+        c->cb->timedout(c, 0);
       }
     }
   }
@@ -159,7 +168,7 @@ route_timed_out(struct route_discovery_conn *rdc)
   }
 
   if(c->cb->timedout) {
-    c->cb->timedout(c);
+    c->cb->timedout(c, 1);
   }
 }
 /*---------------------------------------------------------------------------*/

@@ -659,8 +659,8 @@ send_queued_packet(struct collect_conn *c)
                  send_queued_packet, c);
 #else /* COLLECT_CONF_WITH_LISTEN */
       if(c->is_router) {
-	announcement_set_value(&c->announcement, RTMETRIC_MAX);
-	announcement_bump(&c->announcement);
+	       announcement_set_value(&c->announcement, RTMETRIC_MAX);
+	       announcement_bump(&c->announcement);
       }
 #endif /* COLLECT_CONF_WITH_LISTEN */
 #endif /* COLLECT_ANNOUNCEMENTS */
@@ -1294,45 +1294,80 @@ static const struct neighbor_discovery_callbacks neighbor_discovery_callbacks =
   { adv_received, NULL};
 #endif /* !COLLECT_ANNOUNCEMENTS */
 /*---------------------------------------------------------------------------*/
+
+/*
+ * \brief           Open and initializes a collect connection.
+ * \param tc        The collect connection structure.
+ * \param channels  Which channels to use for this connection.
+ * \param is_router COLLECT_NO_ROUTER or COLLECT_ROUTER.
+ * \param cb        The user-defined collect callbacks ( recv ).
+ */
 void
 collect_open(struct collect_conn *tc, uint16_t channels,
              uint8_t is_router,
 	     const struct collect_callbacks *cb)
 {
+  /* Opens unicast connection [tc->unicast_conn] in channel (channels+1) and
+   * sets two unicast callbacks: node_packet_received and node_packet_sent. */
   unicast_open(&tc->unicast_conn, channels + 1, &unicast_callbacks);
+
+  /* Sets channel (channels+1) attributes as the COLLECT_ATRIBUTES defined in
+   * collect.h */
   channel_set_attributes(channels + 1, attributes);
+
+  /* Sets the connection routing metric as the maximum routing metric.
+   * The sink's routing metric is 0 (RTMETRIC_SINK).
+   * The maximum routing metric (RTMETRIC_MAX) means that a node has no route to a sink. */
   tc->rtmetric = RTMETRIC_MAX;
+
+  /* Registers the collect callbacks ( recv ). */
   tc->cb = cb;
+
+  /* Sets the parameter is_router. Usually it is used the COLLECT_ROUTER. */
   tc->is_router = is_router;
+
+  /* Sets the sequence number to 10. Why? */
   tc->seqno = 10;
+
+  /* Sets the end-to-end sequence number to 0. Why? */
   tc->eseqno = 0;
+
+  /* Initializes the Send Queue list. */
   LIST_STRUCT_INIT(tc, send_queue_list);
-  collect_neighbor_list_new(&tc->neighbor_list);
   tc->send_queue.list = &(tc->send_queue_list);
   tc->send_queue.memb = &send_queue_memb;
+
+  /* Creates and initializes the Neighbor List */
+  collect_neighbor_list_new(&tc->neighbor_list);
   collect_neighbor_init();
 
-#if !COLLECT_ANNOUNCEMENTS
+/* Not happening. */
+#if !COLLECT_ANNOUNCEMENTS /* Happens when COLLECT_ANNOUNCEMENTS = 0 */
   neighbor_discovery_open(&tc->neighbor_discovery_conn, channels,
 			  CLOCK_SECOND * 4,
 			  CLOCK_SECOND * 60,
 #ifdef COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME
               COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME,
-#else
+#else   /* COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME */
               CLOCK_SECOND * 600UL,
-#endif
+#endif  /* COLLECT_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME */
 			  &neighbor_discovery_callbacks);
+
   neighbor_discovery_start(&tc->neighbor_discovery_conn, tc->rtmetric);
-#else /* !COLLECT_ANNOUNCEMENTS */
-  announcement_register(&tc->announcement, channels,
-			received_announcement);
-#if ! COLLECT_CONF_WITH_LISTEN
+
+/* Happening. */
+#else /* !COLLECT_ANNOUNCEMENTS */ /* Happens when COLLECT_ANNOUNCEMENTS = 1 */
+  /* Registers the announcement channel and sets as callback the function received_announcement. */
+  announcement_register(&tc->announcement, channels, received_announcement);
+#if !COLLECT_CONF_WITH_LISTEN
   if(tc->is_router) {
+    /* Sets the announcement value as RTMETRIC_MAX. */
     announcement_set_value(&tc->announcement, RTMETRIC_MAX);
   }
 #endif /* COLLECT_CONF_WITH_LISTEN */
 #endif /* !COLLECT_ANNOUNCEMENTS */
 
+  /* Sets the proactive probing to happen a random time between 0 and 60 seconds. */
   ctimer_set(&tc->proactive_probing_timer, PROACTIVE_PROBING_INTERVAL,
              proactive_probing_callback, tc);
 
@@ -1388,13 +1423,25 @@ collect_close(struct collect_conn *tc)
   }
 }
 /*---------------------------------------------------------------------------*/
+/*
+ * \brief           Sets or unsets the current node as the collect sink.
+ * \param tc        The collect connection structure.
+ * \param 1         The node should be sink.
+ * \param 0         The node should not be sink.
+ */
 void
 collect_set_sink(struct collect_conn *tc, int should_be_sink)
 {
-  if(should_be_sink) {
+  if(should_be_sink) { /* This node should be sink. */
+
+    /* Sets is_router to COLLECT_ROUTER. */
     tc->is_router = 1;
+
+    /* Sets the node routing metric to 0. */
     tc->rtmetric = RTMETRIC_SINK;
     PRINTF("collect_set_sink: tc->rtmetric %d\n", tc->rtmetric);
+
+    /* Makes the route advertisements to be transmitted more rapidly. */
     bump_advertisement(tc);
 
     /* Purge the outgoing packet queue. */
@@ -1404,56 +1451,88 @@ collect_set_sink(struct collect_conn *tc, int should_be_sink)
 
     /* Stop the retransmission timer. */
     ctimer_stop(&tc->retransmission_timer);
-  } else {
+  } else { /* This node should NOT be sink. */
+
+    /* Sets the node routing metric to the maximum (no route to sink). */
     tc->rtmetric = RTMETRIC_MAX;
   }
+
+
 #if COLLECT_ANNOUNCEMENTS
+  /* Updates the announcements routing metric value. */
   announcement_set_value(&tc->announcement, tc->rtmetric);
 #endif /* COLLECT_ANNOUNCEMENTS */
+
+  /* As the routing metric has changed, goes through the list of neighbours
+   * to compute and notify the new routing metric. */
   update_rtmetric(tc);
 
+  /* Makes the route advertisements to be transmitted more rapidly. Again. */
   bump_advertisement(tc);
 
   if(DRAW_TREE) {
     PRINTF("#A rt=0,p=0\n");
   }
 }
+
 /*---------------------------------------------------------------------------*/
+/*
+ * \brief           Activates the sending protocol in the collect module.
+ * \param tc        The collect connection structure.
+ * \param rexmits   Max number of retransmissions of the message.
+ * \return 1        Message was succesfully queued for send.
+ * \return 0        Error sending message.       
+ */
 int
 collect_send(struct collect_conn *tc, int rexmits)
 {
   struct collect_neighbor *n;
   int ret;
   
+  /* Sets the end-to-end packet ID to be the end-to-end Sequence Number
+   * saved in the collect connection strcuture. */
   packetbuf_set_attr(PACKETBUF_ATTR_EPACKET_ID, tc->eseqno);
 
   /* Increase the sequence number for the packet we send out. We
-     employ a trick that allows us to see that a node has been
-     rebooted: if the sequence number wraps to 0, we set it to half of
-     the sequence number space. This allows us to detect reboots,
-     since if a sequence number is less than half of the sequence
-     number space, the data comes from a node that was recently
-     rebooted. */
-
+   * employ a trick that allows us to see that a node has been
+   * rebooted: if the sequence number wraps to 0, we set it to half of
+   * the sequence number space. This allows us to detect reboots,
+   * since if a sequence number is less than half of the sequence
+   * number space, the data comes from a node that was recently
+   * rebooted. */
   tc->eseqno = (tc->eseqno + 1) % (1 << COLLECT_PACKET_ID_BITS);
-
   if(tc->eseqno == 0) {
     tc->eseqno = ((int)(1 << COLLECT_PACKET_ID_BITS)) / 2;
   }
+
+  /* Set the end-to-end sender address as the actual node address. */
   packetbuf_set_addr(PACKETBUF_ADDR_ESENDER, &linkaddr_node_addr);
+
+  /* Sets the packet number of hops as being one. */
   packetbuf_set_attr(PACKETBUF_ATTR_HOPS, 1);
+
+  /* Sets the packet Time-To-Live in how many Hops it can go through
+   * before being discarded. */
   packetbuf_set_attr(PACKETBUF_ATTR_TTL, MAX_HOPLIM);
+
+  /* Set the number of retransmissions attempts for this packet.
+   * This number can not go beyond MAX_REXMITS. */
   if(rexmits > MAX_REXMITS) {
     packetbuf_set_attr(PACKETBUF_ATTR_MAX_REXMIT, MAX_REXMITS);
   } else {
     packetbuf_set_attr(PACKETBUF_ATTR_MAX_REXMIT, rexmits);
   }
 
+  /* Debug message. */
   PRINTF("%d.%d: originating packet %d, max_rexmits %d\n",
          linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
          packetbuf_attr(PACKETBUF_ATTR_EPACKET_ID),
          packetbuf_attr(PACKETBUF_ATTR_MAX_REXMIT));
 
+  /* If we are the Sink Node, so we do not need to send anything.
+   * Sets the number of hops to zero.
+   * Triggers the received message callback, and exits function 
+   * succesfully. */
   if(tc->rtmetric == RTMETRIC_SINK) {
     packetbuf_set_attr(PACKETBUF_ATTR_HOPS, 0);
     if(tc->cb->recv != NULL) {
@@ -1462,29 +1541,42 @@ collect_send(struct collect_conn *tc, int rexmits)
 		   packetbuf_attr(PACKETBUF_ATTR_HOPS));
     }
     return 1;
+
+  /* In case we are not the Sink Node. */
   } else {
 
     /* Allocate space for the header. */
     packetbuf_hdralloc(sizeof(struct data_msg_hdr));
 
+    /* Put the packet in the send queue along with its lifetime. */
     if(packetqueue_enqueue_packetbuf(&tc->send_queue,
                                      FORWARD_PACKET_LIFETIME_BASE *
                                      packetbuf_attr(PACKETBUF_ATTR_MAX_REXMIT),
                                      tc)) {
+      /* If the packet is succesfully queued, then we can send it.
+       * Sets the function return as successful. */
       send_queued_packet(tc);
       ret = 1;
+
+    /* In case we could not enqueue the packet,
+     * sets the function return as error. */
     } else {
       PRINTF("%d.%d: drop originated packet: no queuebuf\n",
              linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
       ret = 0;
     }
 
-    
+    /* Tries to find the parent node in the neighbor list. */
     n = collect_neighbor_list_find(&tc->neighbor_list, &tc->parent);
+
+    /* In case it does find a parent node, everything is ok. */
     if(n != NULL) {
       PRINTF("%d.%d: sending to %d.%d\n",
 	     linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
 	     n->addr.u8[0], n->addr.u8[1]);
+
+    /* In case it does NOT find a parent node, it will start a find
+     * parent routine. */
     } else {
       PRINTF("%d.%d: did not find any neighbor to send to\n",
 	     linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
@@ -1502,17 +1594,6 @@ collect_send(struct collect_conn *tc, int rexmits)
 #endif /* COLLECT_CONF_WITH_LISTEN */
 #endif /* COLLECT_ANNOUNCEMENTS */
 
-      /*      if(packetqueue_enqueue_packetbuf(&tc->send_queue,
-                                       FORWARD_PACKET_LIFETIME_BASE *
-                                       packetbuf_attr(PACKETBUF_ATTR_MAX_REXMIT),
-                                       tc)) {
-	return 1;
-      } else {
-        PRINTF("%d.%d: drop originated packet: no queuebuf\n",
-               linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
-        PRINTF("%d.%d: drop originated packet: no queuebuf\n",
-               linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
-               }*/
     }
   }
   return ret;

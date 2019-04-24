@@ -35,6 +35,7 @@
  *         A simple time synchronization mechanism
  * \author
  *         Adam Dunkels <adam@sics.se>
+ *         Modified: Marco Silva
  */
 
 /**
@@ -99,7 +100,7 @@ timesynch_set_authority_level(int level)
 rtimer_clock_t
 timesynch_time(void)
 {
-  return RTIMER_NOW() + offset;
+  return clock_time() + offset;
 }
 /*---------------------------------------------------------------------------*/
 rtimer_clock_t
@@ -123,6 +124,8 @@ timesynch_offset(void)
 static void
 adjust_offset(rtimer_clock_t authoritative_time, rtimer_clock_t local_time)
 {
+  //printf("authoritative_time: %u\n",  authoritative_time);
+  //printf("Local_time: %u\n", local_time);
   offset = authoritative_time - local_time;
 }
 /*---------------------------------------------------------------------------*/
@@ -138,10 +141,15 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
        have, we synchronize to the time of the sending node and set our
        own authority level to be one more than the sending node. */
   if(msg.authority_level < authority_level) {
-    adjust_offset(msg.timestamp + msg.authority_offset,
-                  packetbuf_attr(PACKETBUF_ATTR_TIMESTAMP));
+    
+    //printf("Receive time Autority level %u: %u with offset %d\n",msg.authority_level, msg.timestamp, msg.authority_offset);
+    
+    adjust_offset(msg.timestamp + msg.authority_offset, clock_time());
+                  //packetbuf_attr(PACKETBUF_ATTR_TIMESTAMP));
     timesynch_set_authority_level(msg.authority_level + 1);
   }
+  //printf("Timesynch_offset = %d | timesynch_authority_level = %d \n\r",
+   //timesynch_offset(), timesynch_authority_level());
 }
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 static struct broadcast_conn broadcast;
@@ -172,10 +180,11 @@ PROCESS_THREAD(timesynch_process, ev, data)
     msg.clock_fine = clock_fine();
     msg.clock_time = clock_time();
     msg.seconds = clock_seconds();
-    msg.timestamp = 0;
+    msg.timestamp = clock_time();
+    //printf("Time Autority level %u: %u\n",msg.authority_level, msg.timestamp);
     packetbuf_copyfrom(&msg, sizeof(msg));
-    packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
-                       PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
+    //packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
+    //                   PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
     broadcast_send(&broadcast);
 
     PROCESS_WAIT_UNTIL(etimer_expired(&intervaltimer));

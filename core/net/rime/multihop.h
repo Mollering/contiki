@@ -103,6 +103,7 @@ void multihop_open(struct multihop_conn *c, uint16_t channel,
 	     const struct multihop_callbacks *u);
 void multihop_close(struct multihop_conn *c);
 int multihop_send(struct multihop_conn *c, const linkaddr_t *to);
+int sink_send(struct multihop_conn *c, const linkaddr_t *sink);
 void multihop_resend(struct multihop_conn *c, const linkaddr_t *nexthop);
 
 #endif /* MULTIHOP_H_ */

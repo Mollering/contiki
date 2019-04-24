@@ -59,8 +59,8 @@
 
 #include "net/rime/unicast.h"
 #include "net/rime/netflood.h"
+#include "net/rime/rime.h" 
 #include "sys/ctimer.h"
-
 struct route_discovery_conn;
 
 struct route_discovery_callbacks {

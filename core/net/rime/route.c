@@ -74,7 +74,7 @@
 LIST(route_table);
 MEMB(route_mem, struct route_entry, NUM_RT_ENTRIES);
 
-static struct ctimer t;
+//static struct ctimer t;
 
 static int max_time = DEFAULT_LIFETIME;
 
@@ -88,6 +88,7 @@ static int max_time = DEFAULT_LIFETIME;
 
 
 /*---------------------------------------------------------------------------*/
+/*
 static void
 periodic(void *ptr)
 {
@@ -107,6 +108,7 @@ periodic(void *ptr)
 
   ctimer_set(&t, CLOCK_SECOND, periodic, NULL);
 }
+*/
 /*---------------------------------------------------------------------------*/
 void
 route_init(void)
@@ -289,4 +291,20 @@ route_get(int num)
   return NULL;
 }
 /*---------------------------------------------------------------------------*/
+// Code By Marco Silva
+int
+route_get_cost(linkaddr_t dest)
+{
+  struct route_entry *e;
+  int result;
+  
+  for(e = list_head(route_table); e != NULL; e = list_item_next(e))
+  {
+    if( linkaddr_cmp(&dest, &e->dest))
+    {
+      result = e->cost;
+    }
+  }
+  return result;
+}
 /** @} */

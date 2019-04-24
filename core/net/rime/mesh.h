@@ -64,6 +64,8 @@
 #include "net/queuebuf.h"
 #include "net/rime/multihop.h"
 #include "net/rime/route-discovery.h"
+#include "net/rime/neighbor-discovery.h"
+
 
 struct mesh_conn;
 
@@ -76,7 +78,9 @@ struct mesh_callbacks {
   /** Called when a packet, sent with mesh_send(), is actually transmitted. */
   void (* sent)(struct mesh_conn *c);
   /** Called when a packet, sent with mesh_send(), times out and is dropped. */
-  void (* timedout)(struct mesh_conn *c);
+  /** timeout_src: 0 when is a timeout from multihop_conn, 
+    * 1 when is a timeout from route_discovery_conn. */
+  void (* timedout)(struct mesh_conn *c, uint8_t timeout_src);
 };
 
 struct mesh_conn {

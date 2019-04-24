@@ -82,6 +82,8 @@
 #define CLOCK_SECOND (clock_time_t)32
 #endif
 
+#define CLOCK_WAIT (clock_time_t)32
+
 /**
  * Initialize the clock library.
  *

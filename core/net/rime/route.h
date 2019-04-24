@@ -77,6 +77,7 @@ void route_flush_all(void);
 void route_set_lifetime(int seconds);
 
 int route_num(void);
+int route_get_cost(linkaddr_t dest);
 struct route_entry *route_get(int num);
 
 #endif /* ROUTE_H_ */

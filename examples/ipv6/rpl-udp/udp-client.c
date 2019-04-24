@@ -34,6 +34,7 @@
 #include "net/ipv6/uip-ds6.h"
 #include "net/ip/uip-udp-packet.h"
 #include "sys/ctimer.h"
+#define WITH_COMPOWER 1
 #ifdef WITH_COMPOWER
 #include "powertrace.h"
 #endif

@@ -98,11 +98,17 @@ rpl_print_neighbor_list(void)
     rpl_parent_t *p = nbr_table_head(rpl_parents);
     clock_time_t clock_now = clock_time();
 
-    printf("RPL: MOP %u OCP %u rank %u dioint %u, nbr count %u\n",
-        default_instance->mop, default_instance->of->ocp, curr_rank, curr_dio_interval, uip_ds6_nbr_num());
+    /*printf("RPL: MOP %u OCP %u rank %u dioint %u, nbr count %u\n",
+        default_instance->mop, default_instance->of->ocp, curr_rank, curr_dio_interval, uip_ds6_nbr_num());*/
+    printf("Neighbors count: %u\n",uip_ds6_nbr_num());
     while(p != NULL) {
       const struct link_stats *stats = rpl_get_parent_link_stats(p);
-      printf("RPL: nbr %3u %5u, %5u => %5u -- %2u %c%c (last tx %u min ago)\n",
+     
+	printf("Neighbor Nbr: %3u -- (last tx %u min ago)\n", 
+		rpl_get_parent_ipaddr(p)->u8[15],
+		 (unsigned)((clock_now - stats->last_tx_time) / (60 * CLOCK_SECOND)));
+
+	 /*printf("RPL: nbr %3u %5u, %5u => %5u -- %2u %c%c (last tx %u min ago)\n",
           rpl_get_parent_ipaddr(p)->u8[15],
           p->rank,
           rpl_get_parent_link_metric(p),
@@ -111,10 +117,10 @@ rpl_print_neighbor_list(void)
           link_stats_is_fresh(stats) ? 'f' : ' ',
           p == default_instance->current_dag->preferred_parent ? 'p' : ' ',
           (unsigned)((clock_now - stats->last_tx_time) / (60 * CLOCK_SECOND))
-      );
+      );*/
       p = nbr_table_next(rpl_parents, p);
     }
-    printf("RPL: end of list\n");
+    printf("End of list\n");
   }
 }
 /*---------------------------------------------------------------------------*/

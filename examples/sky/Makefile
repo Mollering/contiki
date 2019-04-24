@@ -13,4 +13,5 @@ all: blink sky-collect #rt-leds test-button tcprudolph0
 
 CONTIKI_WITH_IPV4 = 1
 CONTIKI_WITH_RIME = 1
+TIMESYNCH_CONF_ENABLED = 1
 include $(CONTIKI)/Makefile.include

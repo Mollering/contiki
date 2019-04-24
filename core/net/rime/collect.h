@@ -148,13 +148,39 @@ enum {
   COLLECT_ROUTER,
 };
 
+
+/*
+ * \brief             Open and initializes a collect connection.
+ * \param c           The collect connection structure.
+ * \param channels    Which channels to use for this connection.
+ * \param is_router   COLLECT_NO_ROUTER or COLLECT_ROUTER.
+ * \param callbacks   The user-defined collect callbacks ( recv ).
+ */
 void collect_open(struct collect_conn *c, uint16_t channels,
                   uint8_t is_router,
                   const struct collect_callbacks *callbacks);
+
+
 void collect_close(struct collect_conn *c);
 
+
+
+/*
+ * \brief           Activates the sending protocol in the collect module.
+ * \param c         The collect connection structure.
+ * \param rexmits   Max number of retransmissions of the message.
+ * \return 1        Message was succesfully queued for send.
+ * \return 0        Error sending message.       
+ */
 int collect_send(struct collect_conn *c, int rexmits);
 
+
+/*
+ * \brief           Sets or unsets the current node as the collect sink.
+ * \param c         The collect connection structure.
+ * \param 1         The node should be sink.
+ * \param 0         The node should not be sink.
+ */
 void collect_set_sink(struct collect_conn *c, int should_be_sink);
 
 int collect_depth(struct collect_conn *c);

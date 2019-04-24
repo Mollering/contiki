@@ -3,6 +3,13 @@
 #ifndef CONTIKI_CONF_H
 #define CONTIKI_CONF_H
 
+/* include the project config */
+/* PROJECT_CONF_H might be defined in the project Makefile */
+#ifdef PROJECT_CONF_H
+#include PROJECT_CONF_H
+#endif /* PROJECT_CONF_H */
+
+
 #ifdef PLATFORM_CONF_H
 #include PLATFORM_CONF_H
 #else
@@ -60,10 +67,6 @@
 #define CXMAC_CONF_ANNOUNCEMENTS         0
 #define XMAC_CONF_ANNOUNCEMENTS          0
 
-#ifndef QUEUEBUF_CONF_NUM
-#define QUEUEBUF_CONF_NUM                8
-#endif
-
 #else /* NETSTACK_CONF_WITH_IPV6 */
 
 /* Network setup for non-IPv6 (rime). */
@@ -84,7 +87,7 @@
 #endif /* QUEUEBUF_CONF_NUM */
 
 #ifndef TIMESYNCH_CONF_ENABLED
-#define TIMESYNCH_CONF_ENABLED           0
+#define TIMESYNCH_CONF_ENABLED           1
 #endif /* TIMESYNCH_CONF_ENABLED */
 
 #if TIMESYNCH_CONF_ENABLED
@@ -210,12 +213,6 @@
 #ifndef AES_128_CONF
 #define AES_128_CONF cc2420_aes_128_driver
 #endif /* AES_128_CONF */
-
-/* include the project config */
-/* PROJECT_CONF_H might be defined in the project Makefile */
-#ifdef PROJECT_CONF_H
-#include PROJECT_CONF_H
-#endif /* PROJECT_CONF_H */
 
 
 #endif /* CONTIKI_CONF_H */

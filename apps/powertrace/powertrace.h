@@ -42,9 +42,9 @@
 
 #include "sys/clock.h"
 
-void powertrace_start(clock_time_t perioc);
+void powertrace_start(clock_time_t period, unsigned seconds, double fixed_perc_energy, unsigned variation);
 void powertrace_stop(void);
-
+void update_battery(int, int, int, int);
 typedef enum {
   POWERTRACE_ON,
   POWERTRACE_OFF
@@ -53,5 +53,7 @@ typedef enum {
 void powertrace_sniff(powertrace_onoff_t onoff);
 
 void powertrace_print(char *str);
+
+long double get_battery_charge(void);
 
 #endif /* POWERTRACE_H */
